@@ -79,6 +79,7 @@ export interface TaskRowProps {
     isKanbanView?: boolean;
     showSuggestionChips?: boolean;
     compact?: boolean;
+    wrapTitle?: boolean;
     // Opt out of inline quick-edit: clicking the row opens the full page.
     disableExpand?: boolean;
     // For pages whose onTaskUpdate only updates local state: the row saves a
@@ -99,6 +100,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
     isInCompletedSection = false,
     hideStatusControl = false,
     compact = false,
+    wrapTitle = false,
     showSuggestionChips = false,
     disableExpand = false,
     saveStatusChanges = false,
@@ -484,6 +486,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
                     hideAreaName={hideAreaName}
                     hideStatusControl={hideStatusControl}
                     condenseStatusControl={isUpcomingView}
+                    wrapTitle={wrapTitle}
                     compact={compact}
                     onActivate={handleActivate}
                     onToggleCompletion={handleToggleCompletion}
@@ -614,6 +617,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
                                     }}
                                     projects={projects}
                                     hideProjectName
+                                    wrapTitle={wrapTitle}
                                     // The handler above only updates this
                                     // list, so the row saves its own status.
                                     saveStatusChanges

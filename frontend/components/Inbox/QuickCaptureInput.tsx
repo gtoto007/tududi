@@ -1,6 +1,7 @@
 import React, {
     useState,
     useEffect,
+    useLayoutEffect,
     useRef,
     useCallback,
     useMemo,
@@ -133,7 +134,7 @@ interface QuickCaptureInputProps {
     onAfterSubmit?: () => void;
     // Tells a host that keeps its own Save button what the box holds
     onTextChange?: (text: string) => void;
-    // A single-line box with no card, padding, chips, suggestions or footer,
+    // A title field with no card, padding, chips or footer,
     // for editing a title inside another editor. It inherits the host's font.
     bare?: boolean;
     // Escape in a bare box calls this instead of saving
@@ -484,7 +485,7 @@ const QuickCaptureInput = React.forwardRef<
             }
         }, []);
 
-        useEffect(() => {
+        useLayoutEffect(() => {
             if (!multiline) return;
             const resize = () => {
                 const el = inputRef.current;
@@ -495,10 +496,12 @@ const QuickCaptureInput = React.forwardRef<
                 // the page past it.
                 const visibleHeight =
                     window.visualViewport?.height ?? window.innerHeight;
-                const maxHeight = Math.max(
-                    96,
-                    Math.min(300, Math.round(visibleHeight * 0.4))
-                );
+                const maxHeight = bare
+                    ? Infinity
+                    : Math.max(
+                          96,
+                          Math.min(300, Math.round(visibleHeight * 0.4))
+                      );
                 el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
                 (el as HTMLElement).style.overflowY =
                     el.scrollHeight > maxHeight ? 'auto' : 'hidden';
@@ -507,8 +510,25 @@ const QuickCaptureInput = React.forwardRef<
             resize();
             const viewport = window.visualViewport;
             viewport?.addEventListener('resize', resize);
-            return () => viewport?.removeEventListener('resize', resize);
-        }, [inputText, multiline, syncTokenOverlayScroll]);
+            // A title must also follow changes to its column width, such as
+            // resizing the sidebar, without waiting for another keystroke.
+            const el = inputRef.current;
+            let previousWidth = el?.clientWidth;
+            const observer =
+                bare && el && typeof ResizeObserver !== 'undefined'
+                    ? new ResizeObserver(() => {
+                          if (el.clientWidth !== previousWidth) {
+                              previousWidth = el.clientWidth;
+                              resize();
+                          }
+                      })
+                    : null;
+            if (el) observer?.observe(el);
+            return () => {
+                viewport?.removeEventListener('resize', resize);
+                observer?.disconnect();
+            };
+        }, [inputText, multiline, bare, syncTokenOverlayScroll]);
 
         // Dates and @people are read on the first line only, so a date
         // mentioned further down a long note never becomes its due date.
@@ -3017,28 +3037,34 @@ const QuickCaptureInput = React.forwardRef<
         const cardClasses = cardClassName ?? 'mb-6';
 
         if (bare) {
+            const fieldProps = {
+                ref: (el: HTMLInputElement | HTMLTextAreaElement | null) => {
+                    inputRef.current = el;
+                },
+                'data-testid': 'quick-capture-input',
+                value: inputText,
+                onChange: handleChange,
+                onSelect: handleCaretEvent,
+                onKeyUp: handleCaretEvent,
+                onClick: handleCaretEvent,
+                style: { font: 'inherit', letterSpacing: 'inherit' },
+                className:
+                    'block w-full bg-transparent text-gray-900 dark:text-gray-100 border-0 focus:outline-none focus:ring-0 p-0',
+                placeholder: '',
+                onKeyDown: handleKeyDown,
+            };
             return (
                 <div className="relative w-full">
                     <div {...fileDropHandlers} data-testid="capture-field">
-                        <input
-                            ref={(el) => {
-                                inputRef.current = el;
-                            }}
-                            type="text"
-                            data-testid="quick-capture-input"
-                            value={inputText}
-                            onChange={handleChange}
-                            onSelect={handleCaretEvent}
-                            onKeyUp={handleCaretEvent}
-                            onClick={handleCaretEvent}
-                            style={{
-                                font: 'inherit',
-                                letterSpacing: 'inherit',
-                            }}
-                            className="w-full bg-transparent text-gray-900 dark:text-gray-100 border-0 focus:outline-none focus:ring-0 p-0"
-                            placeholder=""
-                            onKeyDown={handleKeyDown}
-                        />
+                        {multiline ? (
+                            <textarea
+                                {...fieldProps}
+                                rows={1}
+                                className={`${fieldProps.className} resize-none overflow-hidden whitespace-pre-wrap break-words`}
+                            />
+                        ) : (
+                            <input {...fieldProps} type="text" />
+                        )}
                     </div>
                     <SuggestionsDropdown
                         isVisible={

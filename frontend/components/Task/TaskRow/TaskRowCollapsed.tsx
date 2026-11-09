@@ -50,6 +50,7 @@ interface TaskRowCollapsedProps {
     hideStatusControl?: boolean;
     condenseStatusControl?: boolean;
     compact?: boolean;
+    wrapTitle?: boolean;
     onActivate: (e: React.MouseEvent | React.KeyboardEvent) => void;
     onToggleCompletion?: () => void;
     onTaskUpdate?: (task: Task) => Promise<void>;
@@ -109,6 +110,7 @@ const TaskRowCollapsed: React.FC<TaskRowCollapsedProps> = ({
     hideStatusControl = false,
     condenseStatusControl = false,
     compact = false,
+    wrapTitle = false,
     onActivate,
     onToggleCompletion,
     onTaskUpdate,
@@ -263,7 +265,7 @@ const TaskRowCollapsed: React.FC<TaskRowCollapsedProps> = ({
 
     return (
         <div
-            className={`group flex items-center px-4 ${
+            className={`group flex ${wrapTitle ? 'items-start' : 'items-center'} px-4 ${
                 condenseStatusControl
                     ? 'flex-wrap justify-end gap-x-3 gap-y-1.5'
                     : 'gap-3'
@@ -283,7 +285,9 @@ const TaskRowCollapsed: React.FC<TaskRowCollapsedProps> = ({
                     condenseStatusControl ? 'basis-full' : ''
                 }`}
             >
-                <div className="flex items-center gap-1.5 min-w-0">
+                <div
+                    className={`flex ${wrapTitle ? 'items-start' : 'items-center'} gap-1.5 min-w-0`}
+                >
                     {task.habit_mode && (
                         <FireIcon
                             className="h-4 w-4 text-orange-500 flex-shrink-0"
@@ -292,7 +296,14 @@ const TaskRowCollapsed: React.FC<TaskRowCollapsedProps> = ({
                     )}
                     {editable && onSaveTitle ? (
                         <div
-                            className="flex-1 min-w-0 text-[15px] font-normal tracking-tight"
+                            className={`flex-1 min-w-0 text-[15px] font-normal tracking-tight ${
+                                wrapTitle
+                                    ? `leading-snug ${sheetTitleWeightClass(
+                                          toPriorityLevel(task.priority),
+                                          isTaskCompleted(task.status)
+                                      )}`
+                                    : ''
+                            }`}
                             onClick={stop}
                             onMouseDownCapture={() => {
                                 pressingInsideTitleRef.current = true;
@@ -314,7 +325,7 @@ const TaskRowCollapsed: React.FC<TaskRowCollapsedProps> = ({
                                 ref={titleInputRef}
                                 mode="edit"
                                 bare
-                                multiline={false}
+                                multiline={wrapTitle}
                                 hidePrimaryButton
                                 initialValue={currentName}
                                 projects={projects}
@@ -331,9 +342,11 @@ const TaskRowCollapsed: React.FC<TaskRowCollapsedProps> = ({
                     ) : (
                         <span
                             className={`text-[15px] font-normal tracking-tight ${
-                                condenseStatusControl
-                                    ? 'line-clamp-3 break-words leading-snug'
-                                    : 'max-sm:line-clamp-2 max-sm:break-words sm:truncate'
+                                wrapTitle
+                                    ? 'flex-1 min-w-0 whitespace-pre-wrap break-words leading-snug'
+                                    : condenseStatusControl
+                                      ? 'line-clamp-3 break-words leading-snug'
+                                      : 'max-sm:line-clamp-2 max-sm:break-words sm:truncate'
                             } ${
                                 isTaskCompleted(task.status)
                                     ? 'text-gray-400 dark:text-gray-500 line-through'
@@ -346,13 +359,15 @@ const TaskRowCollapsed: React.FC<TaskRowCollapsedProps> = ({
                             {currentName}
                         </span>
                     )}
-                    {!editable && task.uid && !task.is_virtual_occurrence && (
-                        <CopyTaskLinkButton
-                            path={`/${task.habit_mode ? 'habit' : 'task'}/${encodeURIComponent(task.uid)}`}
-                            className="hidden [@media(hover:hover)]:block opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-                            iconClassName="h-3.5 w-3.5"
-                        />
-                    )}
+                    {(!editable || wrapTitle) &&
+                        task.uid &&
+                        !task.is_virtual_occurrence && (
+                            <CopyTaskLinkButton
+                                path={`/${task.habit_mode ? 'habit' : 'task'}/${encodeURIComponent(task.uid)}`}
+                                className="hidden [@media(hover:hover)]:block opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                                iconClassName="h-3.5 w-3.5"
+                            />
+                        )}
                     {task.is_blocked && !isTaskCompleted(task.status) && (
                         <span
                             className="ml-1 flex items-center gap-0.5 h-5 px-1.5 rounded-full bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex-shrink-0"
@@ -369,7 +384,7 @@ const TaskRowCollapsed: React.FC<TaskRowCollapsedProps> = ({
                             </span>
                         </span>
                     )}
-                    {!editable && commentCount > 0 && (
+                    {(!editable || wrapTitle) && commentCount > 0 && (
                         <span
                             className="ml-1 flex items-center gap-0.5 h-5 px-1.5 rounded-full text-gray-400 dark:text-gray-500 flex-shrink-0"
                             title={t('comments.count', '{{count}} comments', {
@@ -382,33 +397,41 @@ const TaskRowCollapsed: React.FC<TaskRowCollapsedProps> = ({
                             </span>
                         </span>
                     )}
-                    {!editable && hasSubtasks && onSubtasksToggle && (
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onSubtasksToggle(e);
-                            }}
-                            aria-pressed={!!showSubtasks}
-                            title={
-                                showSubtasks
-                                    ? t('tasks.hideSubtasks', 'Hide subtasks')
-                                    : t('tasks.showSubtasks', 'Show subtasks')
-                            }
-                            className={`ml-1 flex items-center gap-0.5 h-5 px-1.5 rounded-full border transition-colors flex-shrink-0 ${
-                                showSubtasks
-                                    ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/40 dark:border-blue-700 dark:text-blue-100'
-                                    : 'text-gray-400 border-transparent hover:border-gray-200 hover:text-gray-600 dark:hover:border-gray-600'
-                            }`}
-                        >
-                            <ListBulletIcon className="h-3.5 w-3.5" />
-                            <ChevronDownIcon
-                                className={`h-3 w-3 transition-transform ${
-                                    showSubtasks ? 'rotate-180' : ''
+                    {(!editable || wrapTitle) &&
+                        hasSubtasks &&
+                        onSubtasksToggle && (
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSubtasksToggle(e);
+                                }}
+                                aria-pressed={!!showSubtasks}
+                                title={
+                                    showSubtasks
+                                        ? t(
+                                              'tasks.hideSubtasks',
+                                              'Hide subtasks'
+                                          )
+                                        : t(
+                                              'tasks.showSubtasks',
+                                              'Show subtasks'
+                                          )
+                                }
+                                className={`ml-1 flex items-center gap-0.5 h-5 px-1.5 rounded-full border transition-colors flex-shrink-0 ${
+                                    showSubtasks
+                                        ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/40 dark:border-blue-700 dark:text-blue-100'
+                                        : 'text-gray-400 border-transparent hover:border-gray-200 hover:text-gray-600 dark:hover:border-gray-600'
                                 }`}
-                            />
-                        </button>
-                    )}
+                            >
+                                <ListBulletIcon className="h-3.5 w-3.5" />
+                                <ChevronDownIcon
+                                    className={`h-3 w-3 transition-transform ${
+                                        showSubtasks ? 'rotate-180' : ''
+                                    }`}
+                                />
+                            </button>
+                        )}
                 </div>
 
                 {hasMeta && (
@@ -527,7 +550,7 @@ const TaskRowCollapsed: React.FC<TaskRowCollapsedProps> = ({
                 )}
             </div>
 
-            {!editable && (onEdit || onDelete) && (
+            {(!editable || wrapTitle) && (onEdit || onDelete) && (
                 <div
                     ref={actionsMenuRef}
                     className="relative flex-shrink-0"
@@ -595,6 +618,7 @@ const TaskRowCollapsed: React.FC<TaskRowCollapsedProps> = ({
                         onToggleCompletion={onToggleCompletion}
                         onTaskUpdate={onTaskUpdate}
                         showMobileVariant={false}
+                        hoverRevealQuickActions={!wrapTitle}
                         onMenuOpenChange={onMenuOpenChange}
                         hideLabel={condenseStatusControl}
                     />

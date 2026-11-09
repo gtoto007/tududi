@@ -41,6 +41,7 @@ const ProjectTasksSection: React.FC<ProjectTasksSectionProps> = ({
                             onTaskDelete={onTaskDelete}
                             projects={allProjects}
                             hideProjectName={true}
+                            wrapTitle
                             onToggleToday={onToggleToday}
                             showCompletedTasks={showCompleted}
                             onReorder={onTaskReorder}
